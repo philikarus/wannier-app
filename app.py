@@ -6,174 +6,50 @@ import dash_mantine_components as dmc
 import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, State, dcc, html
-
-from scripts.app_utils import generate_path_completions
+from dash.exceptions import PreventUpdate
+from scripts.app_utils import check_yrange_input, generate_path_completions
+from scripts.layout import control_panel, file_input_panel, graph_panel, header
 from scripts.parser import ProParser, SimpleParser
+from scripts.plot import plain_bandplot, proj_bandplot
 
 HOME_DIR = os.path.expanduser("~")
+VASP_COLOR = px.colors.qualitative.Plotly[0]
+WANN_COLOR = px.colors.qualitative.Plotly[1]
+PROJ_COLOR = "Agsunset"
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.CERULEAN])
+app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
 app.layout = dbc.Container(
     [
-        dbc.Navbar(
-            # Use row and col to control vertical alignment of logo / brand
-            html.A(
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            html.Img(
-                                src="https://images.plot.ly/logo/new-branding/plotly-logomark.png",
-                                height="30px",
-                                style={"margin-left": "5px"},
-                            )
-                        ),
-                        dbc.Col(dbc.NavbarBrand("Wannier App", className="ms-2")),
-                    ],
-                    align="center",
-                ),
-                style={"textDecoration": "none"},
-            ),
-            color="dark",
-            dark=True,
-            # sticky="top",
-        ),
+        header,
+        html.Br(),
         html.Div(
             [
                 dbc.Row(
                     [
-                        dbc.Col(
-                            [
-                                dbc.Row(
-                                    # dcc.Input(
-                                    #    id="wann-input",
-                                    #    type="text",
-                                    #    value=("/public/home/" + os.getlogin()),
-                                    #    # placeholder="Enter wannier data path...",
-                                    #    debounce=True,
-                                    # ),
-                                    # className="my-2",
-                                    dmc.TextInput(
-                                        id="wann-input",
-                                        type="text",
-                                        # value=("/public/home/" + os.getlogin()),
-                                        label="Wanneier band data path",
-                                        debounce=True,
-                                    )
-                                ),
-                                dbc.Row(
-                                    dcc.Dropdown(
-                                        id="wann-input-dropdown", options=[], value=None
-                                    ),
-                                    className="my-1",
-                                ),
-                                dbc.Row(
-                                    dmc.TextInput(
-                                        id="vasp-input",
-                                        type="text",
-                                        # value=("/public/home/" + os.getlogin()),
-                                        label="Vasp band data path",
-                                        # placeholder="Enter vasp data path...",
-                                        debounce=True,
-                                    ),
-                                    # className="my-2",
-                                ),
-                                dbc.Row(
-                                    dcc.Dropdown(
-                                        id="vasp-input-dropdown", options=[], value=None
-                                    ),
-                                    className="my-1",
-                                ),
-                                dbc.Row(
-                                    dmc.TextInput(
-                                        id="proj-input",
-                                        type="text",
-                                        # value=("/public/home/" + os.getlogin()),
-                                        label="PROCAR path",
-                                        debounce=True,
-                                    ),
-                                    # className="my-2",
-                                ),
-                                dbc.Row(
-                                    dcc.Dropdown(
-                                        id="proj-input-dropdown", options=[], value=None
-                                    ),
-                                    className="my-1",
-                                ),
-                                dbc.Row(
-                                    dmc.TextInput(
-                                        id="outcar-input",
-                                        type="text",
-                                        # value=("/public/home/" + os.getlogin()),
-                                        label="OUTCAR path",
-                                        debounce=True,
-                                    ),
-                                    # className="my-2",
-                                ),
-                                dbc.Row(
-                                    dcc.Dropdown(
-                                        id="outcar-input-dropdown",
-                                        options=[],
-                                        value=None,
-                                    ),
-                                    className="my-1",
-                                ),
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
-                                dcc.Graph(
-                                    id="graph",
-                                    config={
-                                        "toImageButtonOptions": {
-                                            "format": "png",
-                                            "filename": "wann-app",
-                                            "height": 800,
-                                            "width": 800,
-                                            "scale": 3,
-                                        }
-                                    },
-                                ),
-                                dbc.Row(
-                                    [
-                                        dbc.Col(
-                                            dcc.Checklist(
-                                                id="checklist",
-                                                options=[
-                                                    "vasp",
-                                                    "vasp projection",
-                                                    "wannier",
-                                                ],
-                                                value=["vasp projection"],
-                                                inline=True,
-                                            ),
-                                            width={"size": 4},
-                                        ),
-                                        dbc.Col(
-                                            html.Button(
-                                                "Plot", id="generate-button", n_clicks=0
-                                            ),
-                                        ),
-                                    ]
-                                ),
-                            ]
-                        ),
+                        dbc.Col((file_input_panel + control_panel), md=3),
+                        dbc.Col(graph_panel),
                     ],
                     # align="center",
+                    # justify="between",
                 )
             ]
         ),
-    ]
+    ],
+    fluid=True,
 )
 
-yrange = [-4, 4]
+# yrange = [-4, 4]
 
 
-@app.callback(Output("wann-input-dropdown", "options"), [Input("wann-input", "value")])
+@app.callback(Output("wann-input-dropdown", "data"), [Input("wann-input", "value")])
 def update_wann_dropdown_options(input_value):
     if input_value:
-        return generate_path_completions(input_value)
+        completions = generate_path_completions(input_value)
+        if completions:
+            return completions
+        else:
+            raise PreventUpdate
     else:
         return []
 
@@ -183,14 +59,18 @@ def update_wann_input_value(dropdown_value):
     if dropdown_value:
         return dropdown_value
     else:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
 
 # ------------------------------------
-@app.callback(Output("vasp-input-dropdown", "options"), [Input("vasp-input", "value")])
+@app.callback(Output("vasp-input-dropdown", "data"), [Input("vasp-input", "value")])
 def update_vasp_dropdown_options(input_value):
     if input_value:
-        return generate_path_completions(input_value)
+        completions = generate_path_completions(input_value)
+        if completions:
+            return completions
+        else:
+            raise PreventUpdate
     else:
         return []
 
@@ -200,14 +80,18 @@ def update_vasp_input_value(dropdown_value):
     if dropdown_value:
         return dropdown_value
     else:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
 
 # -----------------------------------------
-@app.callback(Output("proj-input-dropdown", "options"), [Input("proj-input", "value")])
+@app.callback(Output("proj-input-dropdown", "data"), [Input("proj-input", "value")])
 def update_proj_dropdown_options(input_value):
     if input_value:
-        return generate_path_completions(input_value)
+        completions = generate_path_completions(input_value)
+        if completions:
+            return completions
+        else:
+            raise PreventUpdate
     else:
         return []
 
@@ -217,16 +101,18 @@ def update_proj_input_value(dropdown_value):
     if dropdown_value:
         return dropdown_value
     else:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
 
 # -----------------------------------------
-@app.callback(
-    Output("outcar-input-dropdown", "options"), [Input("outcar-input", "value")]
-)
+@app.callback(Output("outcar-input-dropdown", "data"), [Input("outcar-input", "value")])
 def update_outcar_dropdown_options(input_value):
     if input_value:
-        return generate_path_completions(input_value)
+        completions = generate_path_completions(input_value)
+        if completions:
+            return completions
+        else:
+            raise PreventUpdate
     else:
         return []
 
@@ -238,72 +124,12 @@ def update_outcar_input_value(dropdown_value):
     if dropdown_value:
         return dropdown_value
     else:
-        raise dash.exceptions.PreventUpdate
+        raise PreventUpdate
 
 
-def plain_bandplot(fig: go.Figure, kpath, bands, **kwargs):
-    num_bands = bands.shape[1]
-    yrange = kwargs.get("yrange", [-4, 4])
-    color = kwargs.get("color", "blue")
-    lineplot_layout = dict(
-        yaxis=dict(range=yrange, showgrid=False),
-        xaxis=dict(showgrid=False),
-        width=800,
-        height=800,
-    )
-
-    for idx in range(1, num_bands + 1):
-        fig.add_trace(
-            go.Scatter(
-                x=kpath,
-                y=bands[idx],
-                mode="lines",
-                # name=f"Trace{idx}",
-                customdata=[f"{idx}"] * len(kpath),
-                hovertemplate="band-index: %{customdata}<br>energy: %{y:.3f} eV<extra></extra>",
-                line=dict(color=color, width=2),
-                showlegend=False,
-            )
-        )
-    fig.update_layout(lineplot_layout)
-    # fig.update_traces(hovertemplate="band-index: %{customdata}<br> energy: %{y} eV")
-
-    return fig
-
-
-def proj_bandplot(fig: go.Figure, kpath, bands, weights, **kwargs):
-    xrange = (kpath.min(), kpath.max())
-    yrange = kwargs.get("yrange", [-4, 4])
-    cmap = kwargs.get("cmap", "jet")
-    scatter_layout = dict(
-        yaxis=dict(range=yrange, showgrid=False),
-        xaxis=dict(range=xrange, showgrid=False),
-        width=800,
-        height=800,
-    )
-
-    for idx in range(weights.shape[-1]):
-        fig.add_trace(
-            go.Scatter(
-                x=kpath,
-                y=bands[:, idx],
-                mode="markers",
-                marker=dict(
-                    size=5,
-                    color=weights[:, idx],
-                    colorscale=cmap,
-                    colorbar_thickness=25,
-                    cmin=weights.min(),
-                    cmax=weights.max(),
-                ),
-                customdata=[f"{idx+1}"] * len(kpath),
-                hovertemplate="band-index: %{customdata}<br>energy: %{y:.3f} eV<extra></extra>",
-                showlegend=False,
-            )
-        )
-    fig.update_layout(scatter_layout)
-
-    return fig
+@app.callback(Output("yrange", "error"), Input("yrange", "value"))
+def update_yrange_error_info(value):
+    return check_yrange_input(value)
 
 
 @app.callback(
@@ -315,20 +141,35 @@ def proj_bandplot(fig: go.Figure, kpath, bands, weights, **kwargs):
         State("vasp-input", "value"),
         State("outcar-input", "value"),
         State("proj-input", "value"),
+        State("yrange", "value"),
     ],
 )
-def update_figure(options, n_clicks, wann_data, vasp_data, outcar_data, proj_data):
+def update_figure(
+    checklist_values, n_clicks, wann_data, vasp_data, outcar_data, proj_data, y_range
+):
     fig = go.Figure()
+    y_min = float(y_range.replace(" ", "").split(",")[0])
+    y_max = float(y_range.replace(" ", "").split(",")[1])
+    y_range = (y_min, y_max)
+
     layout = dict(
-        yaxis=dict(range=yrange, showgrid=False),
+        yaxis=dict(range=y_range, title="Energy (eV)", showgrid=False),
         xaxis=dict(showgrid=False),
         width=800,
-        height=800,
+        height=600,
+        margin=dict(l=50, r=50, t=50, b=50),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.1,
+            xanchor="left",
+            x=0.01,
+            font=dict(size=12),
+        ),
     )
-    fig.update_layout(layout)
 
     if n_clicks > 0:
-        if "vasp" in options and vasp_data:
+        if "vasp" in checklist_values and vasp_data:
             vasp_data = os.path.join(HOME_DIR, vasp_data)
             vasp = SimpleParser(vasp_data)
             vasp.read_file()
@@ -336,10 +177,11 @@ def update_figure(options, n_clicks, wann_data, vasp_data, outcar_data, proj_dat
                 fig,
                 vasp.kpath,
                 vasp.bands,
-                yrange=yrange,
-                color=px.colors.sequential.ice[5],
+                # yrange=y_range,
+                color=VASP_COLOR,
+                name="vasp band",
             )
-        if "wannier" in options and wann_data:
+        if "wann" in checklist_values and wann_data:
             wann_data = os.path.join(HOME_DIR, wann_data)
             outcar_data = os.path.join(HOME_DIR, outcar_data)
             wann = SimpleParser(wann_data, outcar=outcar_data)
@@ -348,13 +190,15 @@ def update_figure(options, n_clicks, wann_data, vasp_data, outcar_data, proj_dat
                 fig,
                 wann.kpath,
                 wann.bands,
-                color=px.colors.sequential.Mint[3],
-                yrange=yrange,
+                color=WANN_COLOR,
+                # yrange=y_range,
+                name="wannier band",
             )
 
-        if "vasp projection" in options and proj_data:
+        if "proj" in checklist_values and proj_data:
             proj_data = os.path.join(HOME_DIR, proj_data)
-            outcar_data = os.path.join(HOME_DIR, outcar_data)
+            if outcar_data:
+                outcar_data = os.path.join(HOME_DIR, outcar_data)
             vasp_proj = ProParser(proj_data, outcar=outcar_data)
             vasp_proj.select_orb([0], [0, 1], [5, 7])
 
@@ -363,13 +207,16 @@ def update_figure(options, n_clicks, wann_data, vasp_data, outcar_data, proj_dat
                 vasp_proj.kpath,
                 vasp_proj.bands,
                 vasp_proj.weights,
-                cmap="plasma",
-                yrange=yrange,
+                cmap=PROJ_COLOR,
+                # yrange=y_range,
+                name="projected band",
             )
+
+        fig.update_layout(layout)
 
         return fig
     else:
-        return dash.no_update
+        return go.Figure(layout=layout)
 
 
 app.run_server(debug=True)

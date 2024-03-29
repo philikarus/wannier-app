@@ -2,6 +2,9 @@ import os
 import sys
 from functools import wraps
 
+from dash import html
+from dash_iconify import DashIconify
+
 
 class StdoutNull:
     """
@@ -44,7 +47,23 @@ def generate_path_completions(path):
             item_path = os.path.join(path, item)
             abs_item_path = os.path.join(home_dir, item_path)
             if os.path.isdir(abs_item_path):
-                path_completions.append({"label": item + "/", "value": item_path + "/"})
+                path_completions.append(
+                    {
+                        "label": "📁" + item + "/",
+                        "value": item_path + "/",
+                    }
+                )
             else:
-                path_completions.append({"label": item, "value": item_path})
+                path_completions.append({"label": "📄" + item, "value": item_path})
     return path_completions
+
+
+def check_yrange_input(value: str):
+    error = False
+    try:
+        y_range = list(map(float, value.replace(" ", "").split(",")))
+        if len(y_range) == 2:
+            pass
+    except ValueError:
+        error = "Not a valid input"
+    return error
