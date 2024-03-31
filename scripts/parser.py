@@ -1,17 +1,71 @@
 import re
+from distutils.version import LooseVersion
 
 import numpy as np
 import pandas as pd
+import pyprocar
 from pandas import MultiIndex
-from pyprocar import ProcarParser, ProcarSelect
+from pymatgen.electronic_structure.plotter import BSPlotter
+from pymatgen.io.vasp import BSVasprun
+from pyprocar import ProcarParser
 
-from .app_utils import block_stdout
+from .utils import block_stdout
+
+if LooseVersion(pyprocar.__version__) < LooseVersion("6.0.0"):
+    from pyprocar import ProcarSelect
+else:
+    from pyprocar.core import ProcarSelect
 
 
-class SimpleParser:
-    def __init__(self, bandfile: str, outcar: str | None = None):
+class VaspParser:
+    def __init__(self, vasp_xml: str, kpoint_file: str):
+        vasprun = BSVasprun(vasp_xml)
+        bs_symm = vasprun.get_band_structure(kpoint_file, line_mode=True)
+        self.efermi = bs_symm.efermi
+        bs_plotter = BSPlotter(bs_symm)
+        self._data = bs_plotter.bs_plot_data(zero_to_efermi=False)
+        self.is_spin_polarized = bs_symm.is_spin_polarized
+
+    @property
+    def bands(self):
+        return np.vstack([seg.T for seg in self._data["energy"]["1"]]) - self.efermi
+
+    @property
+    def bands_up(self):
+        return self.bands
+
+    @property
+    def bands_down(self):
+        if self.is_spin_polarized:
+            return np.vstack([seg.T for seg in self._data["energy"]["-1"]])
+        else:
+            raise Exception("Not spin polarized")
+
+    @property
+    def kpath(self):
+        return np.hstack(self._data["distances"])
+
+    @property
+    def ticks(self):
+        ticks = list(set(self._data["ticks"]["distance"]))
+        ticklabels = self._data["ticks"]["label"]
+        ticklabels = [ticklabels[0]] + list(set(ticklabels[1:-1])) + [ticklabels[-1]]
+        # ticklabels = list(
+        #    map(
+        #        lambda x: (
+        #            r"$\{}$".format(x.lower().capitalize()) if "GAMMA" in x else r"{}".format(x)
+        #        ),
+        #        ticklabels,
+        #    )
+        # )
+        ticklabels = [r"$\Gamma$" if l == "GAMMA" else l for l in ticklabels]
+        return {"ticks": ticks, "ticklabels": ticklabels}
+
+
+class WannParser:
+    def __init__(self, bandfile: str, vasp_xml: str | None = None):
         self.bandfile = bandfile
-        self.outcar = outcar
+        self.vasp_xml = vasp_xml
         self._data = None
 
     def read_file(self) -> None:
@@ -26,49 +80,44 @@ class SimpleParser:
         band_data.columns = columns
         self._data = band_data
 
-        if self.outcar:
+        if self.vasp_xml:
             self._offset_by_fermi()
 
     def _offset_by_fermi(self) -> None:
-        with open(self.outcar, "r") as f_outcar:
-            contents = f_outcar.read()
-        pattern = r"E-fermi\s*:\s*[-+]?[0-9]*\.?[0-9]+"
+        with open(self.vasp_xml, "r") as f:
+            contents = f.read()
+        pattern = r'<i name="efermi">\s*([\d.-]+)\s*</i>'
         matches = re.findall(pattern, contents)
-        matched = matches[0].split(":")[-1].strip()
-        efermi = float(matched)
+        efermi = float(matches[0])
         self._data["bands"] = self._data["bands"] - efermi
 
         return
 
     @property
     def bands(self):
-        return self._data["bands"]
+        return np.array(self._data["bands"])
 
     @property
     def kpath(self):
-        return self._data["kpath"]
+        return np.array(self._data["kpath"])
 
 
-class ProParser:
+class ProjParser:
     @block_stdout
-    def __init__(self, procar: str, outcar: str | None = None):
+    def __init__(self, procar: str, vasp_xml: str):
         self.procar = procar
-        self.outcar = outcar
+        self.vasp_xml = vasp_xml
         pc_parser = ProcarParser()
         pc_parser.readFile(self.procar)
         self._data = ProcarSelect(pc_parser, deepCopy=True)
-
-        if outcar:
-            self._offset_by_fermi()
+        self._offset_by_fermi()
 
     def _offset_by_fermi(self) -> None:
-        with open(self.outcar, "r") as f_outcar:
-            contents = f_outcar.read()
-        pattern = r"E-fermi\s*:\s*[-+]?[0-9]*\.?[0-9]+"
+        with open(self.vasp_xml, "r") as f:
+            contents = f.read()
+        pattern = r'<i name="efermi">\s*([\d.-]+)\s*</i>'
         matches = re.findall(pattern, contents)
-        # get the value of fermi energy
-        matched = matches[0].split(":")[-1].strip()
-        efermi = float(matched)
+        efermi = float(matches[0])
         self._data.bands = self._data.bands - efermi
 
     @property
@@ -101,8 +150,12 @@ class ProParser:
         return self._data.spd
 
     def select_orb(
-        self, ispin: list[int], atoms: list[int], orbs: list[int], separate=True
+        self, ispin: list[int], atoms: list[int], orbs: list[int], separate=False
     ) -> None:
+        """
+        ispin: For nsoc calculation, ispin=0 denotes the spin density, ispin=1 denotes the spin magnetization
+            For soc calculation, ispin=0 denotes the spin density and ispin=1, 2, 3 denotes Sx, Sy, Sz
+        """
         self._data.selectIspin(ispin, separate=separate)
         self._data.selectAtoms(atoms)
         self._data.selectOrbital(orbs)

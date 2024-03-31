@@ -45,7 +45,7 @@ file_input_panel = [
             id="vasp-input",
             type="text",
             placeholder="Enter a path...",
-            label="VASP Band Data Path",
+            label="VASPRUN XML Path",
             debounce=True,
         ),
         md=12,
@@ -55,6 +55,7 @@ file_input_panel = [
         dmc.Select(
             id="vasp-input-dropdown",
             data=[],
+            searchable=True,
             placeholder="Select under path",
             value=None,
         ),
@@ -76,6 +77,7 @@ file_input_panel = [
         dmc.Select(
             id="proj-input-dropdown",
             data=[],
+            searchable=True,
             placeholder="Select under path",
             value=None,
         ),
@@ -96,6 +98,7 @@ file_input_panel = [
         dmc.Select(
             id="wann-input-dropdown",
             data=[],
+            searchable=True,
             placeholder="Select under path",
             value=None,
             allowDeselect=True,
@@ -105,10 +108,10 @@ file_input_panel = [
     ),
     dbc.Col(
         dmc.TextInput(
-            id="outcar-input",
+            id="kpoints-input",
             type="text",
             placeholder="Enter a path...",
-            label="OUTCAR Path",
+            label="KPOINTS Path",
             debounce=True,
         ),
         # className="my-2",
@@ -116,8 +119,9 @@ file_input_panel = [
     ),
     dbc.Col(
         dmc.Select(
-            id="outcar-input-dropdown",
+            id="kpoints-input-dropdown",
             data=[],
+            searchable=True,
             placeholder="Select under path",
             value=None,
         ),
@@ -135,6 +139,26 @@ yrange_tooltips = dbc.Tooltip(
 
 control_panel = [
     html.Div(yrange_tooltips),
+    html.B(dbc.Label("Pick Data to Plot")),
+    dbc.Col(
+        dbc.Checklist(
+            id="checklist",
+            options=[
+                {"label": "vasp", "value": "vasp"},
+                {
+                    "label": "vasp projection",
+                    "value": "proj",
+                },
+                {
+                    "label": "wannier",
+                    "value": "wann",
+                },
+            ],
+            value=["proj"],
+            inline=True,
+        ),
+        # width={"size": 4, "offset": 1},
+    ),
     dbc.Col(
         dmc.TextInput(
             id="yrange",
@@ -161,28 +185,11 @@ graph_panel = [
                 "scale": 3,
             }
         },
+        # required to render latex
+        mathjax=True,
     ),
     dbc.Row(
         [
-            dbc.Col(
-                dbc.Checklist(
-                    id="checklist",
-                    options=[
-                        {"label": "vasp", "value": "vasp"},
-                        {
-                            "label": "vasp projection",
-                            "value": "proj",
-                        },
-                        {
-                            "label": "wannier",
-                            "value": "wann",
-                        },
-                    ],
-                    value=["proj"],
-                    inline=True,
-                ),
-                width={"size": 4, "offset": 1},
-            ),
             dbc.Col(
                 dmc.Button(
                     "Plot",
@@ -191,6 +198,7 @@ graph_panel = [
                     variant="gradient",
                     leftIcon=DashIconify(icon="mdi:graph-line", height=20),
                 ),
+                width={"size": 3, "offset": 4},
             ),
         ],
         align="center",

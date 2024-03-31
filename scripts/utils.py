@@ -42,6 +42,15 @@ def generate_path_completions(path):
     abs_path = os.path.join(home_dir, path)
     if os.path.isdir(abs_path):
         files_and_dirs = os.listdir(abs_path)
+        dirs_only = [
+            f for f in files_and_dirs if os.path.isdir(os.path.join(abs_path, f))
+        ]
+        files_only = [
+            f for f in files_and_dirs if not os.path.isdir(os.path.join(abs_path, f))
+        ]
+        dirs_only.sort()
+        files_only.sort()
+        files_and_dirs = dirs_only + files_only
         files_and_dirs_no_hidden = [f for f in files_and_dirs if not f.startswith(".")]
         for item in files_and_dirs_no_hidden:
             item_path = os.path.join(path, item)
