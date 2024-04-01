@@ -67,6 +67,12 @@ def generate_path_completions(path):
     return path_completions
 
 
+def find_indices(lst, uniq_val):
+    for idx, item in enumerate(lst):
+        if item in uniq_val:
+            yield idx
+
+
 def check_yrange_input(value: str):
     error = False
     try:

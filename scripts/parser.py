@@ -1,5 +1,6 @@
 import re
 from distutils.version import LooseVersion
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -18,16 +19,19 @@ else:
 
 
 class VaspParser:
-    def __init__(self, vasp_xml: str, kpoint_file: str):
+    def __init__(self, vasp_xml: str, kpoint_file: Optional[str] = None):
         vasprun = BSVasprun(vasp_xml)
-        bs_symm = vasprun.get_band_structure(kpoint_file, line_mode=True)
-        self.efermi = bs_symm.efermi
-        bs_plotter = BSPlotter(bs_symm)
-        self._data = bs_plotter.bs_plot_data(zero_to_efermi=False)
-        self.is_spin_polarized = bs_symm.is_spin_polarized
+        self.atom_list: list[str] = vasprun.atomic_symbols
+        if kpoint_file:
+            bs_symm = vasprun.get_band_structure(kpoint_file, line_mode=True)
+            bs_plotter = BSPlotter(bs_symm)
+            self.efermi = bs_symm.efermi
+            self._data = bs_plotter.bs_plot_data(zero_to_efermi=False)
+            self.is_spin_polarized = bs_symm.is_spin_polarized
 
     @property
     def bands(self):
+        # key "1" in self_data["energy"]["1"] always exists whenever it is spin polarized
         return np.vstack([seg.T for seg in self._data["energy"]["1"]]) - self.efermi
 
     @property
@@ -109,6 +113,7 @@ class ProjParser:
         self.vasp_xml = vasp_xml
         pc_parser = ProcarParser()
         pc_parser.readFile(self.procar)
+        self.orbitals: list[str] = pc_parser.orbitalName[: pc_parser.orbitalCount - 1]
         self._data = ProcarSelect(pc_parser, deepCopy=True)
         self._offset_by_fermi()
 
@@ -149,12 +154,34 @@ class ProjParser:
     def weights(self):
         return self._data.spd
 
-    def select_orb(
+    def select_atom_and_orb(
         self, ispin: list[int], atoms: list[int], orbs: list[int], separate=False
     ) -> None:
         """
-        ispin: For nsoc calculation, ispin=0 denotes the spin density, ispin=1 denotes the spin magnetization
-            For soc calculation, ispin=0 denotes the spin density and ispin=1, 2, 3 denotes Sx, Sy, Sz
+        ispin: For nsoc calculation, ispin=[0] denotes the spin density, ispin=[1] denotes the spin magnetization
+            For soc calculation, ispin=[0] denotes the spin density and ispin=[1], [2], [3] denotes Sx, Sy, Sz
+
+        atoms: list of atom indices, [0, 1, 2, ...]
+
+        orbs: list of orbital indices, [0, 1, 2, ...] for [
+            "s",
+            "py",
+            "pz",
+            "px",
+            "dxy",
+            "dyz",
+            "dz2",
+            "dxz",
+            "x2-y2",
+            "fy3x2",
+            "fxyz",
+            "fyz2",
+            "fz3",
+            "fxz2",
+            "fzx2",
+            "fx3",
+            "tot",
+        ]
         """
         self._data.selectIspin(ispin, separate=separate)
         self._data.selectAtoms(atoms)

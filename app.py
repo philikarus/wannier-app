@@ -5,13 +5,14 @@ import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, State, dcc, html
+from dash import Dash, Input, Output, State, clientside_callback, dcc, html
 from dash.exceptions import PreventUpdate
 
-from scripts.layout import control_panel, file_input_panel, graph_panel, header
+from scripts.layout import layout
 from scripts.parser import ProjParser, VaspParser, WannParser
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
-from scripts.utils import check_yrange_input, generate_path_completions
+from scripts.utils import (check_yrange_input, find_indices,
+                           generate_path_completions)
 
 HOME_DIR = os.path.expanduser("~")
 VASP_COLOR = px.colors.qualitative.Plotly[0]
@@ -25,31 +26,7 @@ MATHJAX_CDN = (
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
-app.layout = dbc.Container(
-    [
-        header,
-        html.Br(),
-        html.Div(
-            [
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            (file_input_panel + control_panel),
-                            # md=3,
-                            style={"overflowY": "scroll", "height": "700px"},
-                            width={"size": 3, "offset": 0},
-                            # class_name="bg-light",
-                        ),
-                        dbc.Col(graph_panel, width={"size": 8}),
-                    ],
-                    # align="center",
-                    justify="around",
-                )
-            ]
-        ),
-    ],
-    fluid=True,
-)
+app.layout = layout
 
 # yrange = [-4, 4]
 
@@ -141,6 +118,74 @@ def update_kpoints_input_value(dropdown_value):
         raise PreventUpdate
 
 
+@app.callback(
+    [
+        Output("vasp-input", "required"),
+        Output("kpoints-input", "required"),
+        Output("proj-input", "required"),
+        Output("wann-input", "required"),
+        Output("atom-select", "required"),
+        Output("orbital-select", "required"),
+    ],
+    Input("checklist", "value"),
+)
+def update_is_file_required(checklist_values):
+    required = [False] * 6
+    if "vasp" in checklist_values:
+        required[0] = True
+        required[1] = True
+    if "proj" in checklist_values:
+        required[0] = True
+        required[1] = True
+        required[2] = True
+        required[4] = True
+        required[5] = True
+    if "wann" in checklist_values:
+        required[0] = True
+        required[3] = True
+    return required
+
+
+clientside_callback(
+    """
+    function updateLoadingState(n_clicks) {
+        return true
+    }
+    """,
+    Output("load-data", "loading", allow_duplicate=True),
+    Input("load-data", "n_clicks"),
+    prevent_initial_call=True,
+)
+
+
+@app.callback(
+    [
+        Output("atom-select", "data"),
+        Output("orbital-select", "data"),
+        Output("load-data", "loading"),
+    ],
+    [
+        Input("load-data", "n_clicks"),
+        State("vasp-input", "value"),
+        State("proj-input", "value"),
+    ],
+)
+def update_control_options(n_clicks, vasp_data, proj_data):
+    atom_list = []
+    orbital_list = []
+    if n_clicks > 0:
+        if vasp_data:
+            vasp_data = os.path.join(HOME_DIR, vasp_data)
+            vasp = VaspParser(vasp_data)
+            atom_list = list(set(vasp.atom_list))
+        if proj_data and vasp_data:
+            proj_data = os.path.join(HOME_DIR, proj_data)
+            proj = ProjParser(proj_data, vasp_xml=vasp_data)
+            orbital_list = proj.orbitals
+
+    return atom_list, orbital_list, False
+
+
 @app.callback(Output("yrange", "error"), Input("yrange", "value"))
 def update_yrange_error_info(value):
     return check_yrange_input(value)
@@ -155,11 +200,21 @@ def update_yrange_error_info(value):
         State("vasp-input", "value"),
         State("kpoints-input", "value"),
         State("proj-input", "value"),
+        State("atom-select", "value"),
+        State("orbital-select", "value"),
         State("yrange", "value"),
     ],
 )
 def update_figure(
-    checklist_values, n_clicks, wann_data, vasp_data, kpoints_data, proj_data, y_range
+    checklist_values,
+    n_clicks,
+    wann_data,
+    vasp_data,
+    kpoints_data,
+    proj_data,
+    atoms,
+    orbitals,
+    y_range,
 ):
     fig = go.Figure()
     y_min = float(y_range.replace(" ", "").split(",")[0])
@@ -218,7 +273,11 @@ def update_figure(
         if "proj" in checklist_values and proj_data:
             proj_data = os.path.join(HOME_DIR, proj_data)
             vasp_proj = ProjParser(proj_data, vasp_xml=vasp_data)
-            vasp_proj.select_orb([0], [0, 1], [5, 7])
+            atom_list = vasp.atom_list
+            atoms = list(find_indices(atom_list, atoms))
+            orbital_list = vasp_proj.orbitals
+            orbitals = list(find_indices(orbital_list, orbitals))
+            vasp_proj.select_atom_and_orb([0], atoms, orbitals)
 
             proj_bandplot(
                 fig,
