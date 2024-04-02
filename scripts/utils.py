@@ -79,6 +79,8 @@ def check_yrange_input(value: str):
         y_range = list(map(float, value.replace(" ", "").split(",")))
         if len(y_range) == 2:
             pass
+        else:
+            error = "Not a valid input"
     except ValueError:
         error = "Not a valid input"
     return error

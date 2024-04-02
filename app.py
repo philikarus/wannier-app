@@ -5,9 +5,8 @@ import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, State, clientside_callback, dcc, html
+from dash import Dash, Input, Output, Patch, State, clientside_callback
 from dash.exceptions import PreventUpdate
-
 from scripts.layout import layout
 from scripts.parser import ProjParser, VaspParser, WannParser
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
@@ -20,15 +19,11 @@ WANN_COLOR = px.colors.qualitative.Plotly[1]
 PROJ_COLOR = "Agsunset"
 SYMMLINE_COLOR = px.colors.qualitative.Prism[10]
 
-MATHJAX_CDN = (
-    "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"
-)
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
+app.title = "Wannier Dash"
 app.layout = layout
-
-# yrange = [-4, 4]
 
 
 @app.callback(Output("wann-input-dropdown", "data"), [Input("wann-input", "value")])
@@ -163,27 +158,39 @@ clientside_callback(
         Output("atom-select", "data"),
         Output("orbital-select", "data"),
         Output("load-data", "loading"),
+        Output("loaded-data", "data"),
     ],
     [
         Input("load-data", "n_clicks"),
         State("vasp-input", "value"),
+        State("kpoints-input", "value"),
         State("proj-input", "value"),
+        State("wann-input", "value"),
     ],
 )
-def update_control_options(n_clicks, vasp_data, proj_data):
+def update_control_options(n_clicks, vasp_data, kpoints_data, proj_data, wann_data):
     atom_list = []
     orbital_list = []
+    loaded_data = {}
     if n_clicks > 0:
         if vasp_data:
             vasp_data = os.path.join(HOME_DIR, vasp_data)
             vasp = VaspParser(vasp_data)
             atom_list = list(set(vasp.atom_list))
+            loaded_data["vasp"] = vasp_data
         if proj_data and vasp_data:
             proj_data = os.path.join(HOME_DIR, proj_data)
             proj = ProjParser(proj_data, vasp_xml=vasp_data)
             orbital_list = proj.orbitals
+            loaded_data["proj"] = proj_data
+        if kpoints_data:
+            kpoints_data = os.path.join(HOME_DIR, kpoints_data)
+            loaded_data["kpoints"] = kpoints_data
+        if wann_data:
+            wann_data = os.path.join(HOME_DIR, wann_data)
+            loaded_data["wann"] = wann_data
 
-    return atom_list, orbital_list, False
+    return atom_list, orbital_list, False, loaded_data
 
 
 @app.callback(Output("yrange", "error"), Input("yrange", "value"))
@@ -192,14 +199,30 @@ def update_yrange_error_info(value):
 
 
 @app.callback(
+    Output("graph", "figure", allow_duplicate=True),
+    [Input("update-yrange", "n_clicks"), State("yrange", "value")],
+    prevent_initial_call=True,
+)
+def update_yrange(n_clicks, y_range):
+    if n_clicks > 0:
+        y_min = float(y_range.replace(" ", "").split(",")[0])
+        y_max = float(y_range.replace(" ", "").split(",")[1])
+        y_range = (y_min, y_max)
+        patched_figure = Patch()
+        patched_figure["layout"]["yaxis"]["range"] = y_range
+        return patched_figure
+
+
+@app.callback(
     Output("graph", "figure"),
     [
-        Input("checklist", "value"),
+        State("checklist", "value"),
         Input("generate-button", "n_clicks"),
-        State("wann-input", "value"),
-        State("vasp-input", "value"),
-        State("kpoints-input", "value"),
-        State("proj-input", "value"),
+        # State("wann-input", "value"),
+        # State("vasp-input", "value"),
+        # State("kpoints-input", "value"),
+        # State("proj-input", "value"),
+        State("loaded-data", "data"),
         State("atom-select", "value"),
         State("orbital-select", "value"),
         State("yrange", "value"),
@@ -208,10 +231,11 @@ def update_yrange_error_info(value):
 def update_figure(
     checklist_values,
     n_clicks,
-    wann_data,
-    vasp_data,
-    kpoints_data,
-    proj_data,
+    # wann_data,
+    # vasp_data,
+    # kpoints_data,
+    # proj_data,
+    loaded_data,
     atoms,
     orbitals,
     y_range,
@@ -238,9 +262,14 @@ def update_figure(
     )
 
     if n_clicks > 0:
+        vasp_data = loaded_data.get("vasp", None)
+        kpoints_data = loaded_data.get("kpoints", None)
+        wann_data = loaded_data.get("wann", None)
+        proj_data = loaded_data.get("proj", None)
+
         if vasp_data and kpoints_data:
-            vasp_data = os.path.join(HOME_DIR, vasp_data)
-            kpoints_data = os.path.join(HOME_DIR, kpoints_data)
+            # vasp_data = os.path.join(HOME_DIR, vasp_data)
+            # kpoints_data = os.path.join(HOME_DIR, kpoints_data)
             vasp = VaspParser(vasp_data, kpoints_data)
             x_range = [vasp.kpath[0], vasp.kpath[-1]]
             layout["xaxis"]["range"] = x_range
@@ -257,8 +286,8 @@ def update_figure(
             # make_symm_lines(fig, vasp.ticks, color="black")
 
         if "wann" in checklist_values and wann_data:
-            wann_data = os.path.join(HOME_DIR, wann_data)
-            vasp_data = os.path.join(HOME_DIR, vasp_data)
+            # wann_data = os.path.join(HOME_DIR, wann_data)
+            # vasp_data = os.path.join(HOME_DIR, vasp_data)
             wann = WannParser(wann_data, vasp_xml=vasp_data)
             wann.read_file()
             plain_bandplot(
@@ -271,7 +300,7 @@ def update_figure(
             )
 
         if "proj" in checklist_values and proj_data:
-            proj_data = os.path.join(HOME_DIR, proj_data)
+            # proj_data = os.path.join(HOME_DIR, proj_data)
             vasp_proj = ProjParser(proj_data, vasp_xml=vasp_data)
             atom_list = vasp.atom_list
             atoms = list(find_indices(atom_list, atoms))
@@ -284,6 +313,7 @@ def update_figure(
                 vasp.kpath,
                 vasp_proj.bands,
                 vasp_proj.weights,
+                normalize=False,
                 cmap=PROJ_COLOR,
                 # yrange=y_range,
                 label="projected band",

@@ -13,12 +13,6 @@ def plain_bandplot(
     fig: go.Figure, kpath, bands, color, label=None, yrange=[-4, 4], **kwargs
 ):
     num_bands = bands.shape[1]
-    # lineplot_layout = dict(
-    #    yaxis=dict(range=yrange, showgrid=False),
-    #    xaxis=dict(range=[kpath.min(), kpath.max()], showgrid=False),
-    #    # width=800,
-    #    height=600,
-    # )
 
     for idx in range(num_bands):
         fig.add_trace(
@@ -36,8 +30,6 @@ def plain_bandplot(
                 **kwargs,
             )
         )
-    # fig.update_layout(lineplot_layout)
-    # fig.update_traces(hovertemplate="band-index: %{customdata}<br> energy: %{y} eV")
 
     return fig
 
@@ -47,18 +39,14 @@ def proj_bandplot(
     kpath,
     bands,
     weights,
+    normalize=False,
     cmap="jet",
     label=None,
     **kwargs,
 ):
-    xrange = (kpath.min(), kpath.max())
-    # scatter_layout = dict(
-    #    yaxis=dict(range=yrange, showgrid=False),
-    #    xaxis=dict(range=xrange, showgrid=False),
-    #    width=800,
-    #    height=600,
-    # )
 
+    if normalize:
+        weights = (weights - weights.min()) / (weights.max() - weights.min())
     for idx in range(weights.shape[-1]):
         fig.add_trace(
             go.Scatter(
@@ -81,7 +69,6 @@ def proj_bandplot(
                 **kwargs,
             )
         )
-    # fig.update_layout(scatter_layout)
     fig.update_layout(
         coloraxis_colorbar=dict(title="weight", len=0.5, y=0.5),
         margin=dict(l=50, r=50, t=50, b=50),

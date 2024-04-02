@@ -75,6 +75,7 @@ file_input_panel = [
             id="vasp-input-dropdown",
             data=[],
             searchable=True,
+            clearable=True,
             placeholder="Select under path",
             value=None,
             style={"width": 300},
@@ -220,7 +221,7 @@ control_panel = [
             label="Select Atoms",
             data=[],
             mb=5,
-            # style={"width": 120},
+            # style={"width": 200},
         ),
         md=8,
     ),
@@ -232,34 +233,47 @@ control_panel = [
         ),
         md=8,
     ),
-    dbc.Col(
-        dmc.TextInput(
-            id="yrange",
-            label="Y-axis Limit",
-            placeholder="-4, 4",
-            value="-4, 4",
-            size="sm",
-            error=False,
-            # style={"width": 120},
+    dmc.TextInput(
+        id="yrange",
+        label="Y-axis Limit",
+        placeholder="-4, 4",
+        value="-4, 4",
+        size="sm",
+        error=False,
+        style={"width": 100},
+        rightSection=dmc.ActionIcon(
+            DashIconify(icon="material-symbols:sync", width=20),
+            id="update-yrange",
+            # size="lg",
+            color="blue",
+            variant="subtle",
         ),
-        md=4,
     ),
 ]
 
 graph_panel = [
-    dcc.Graph(
-        id="graph",
-        config={
-            "toImageButtonOptions": {
-                "format": "png",
-                "filename": "wann-app",
-                "height": 800,
-                "width": 800,
-                "scale": 3,
-            }
-        },
-        # required to render latex
-        mathjax=True,
+    dcc.Store(id="loaded-data"),
+    dmc.LoadingOverlay(
+        html.Div(
+            children=[
+                dcc.Graph(
+                    id="graph",
+                    config={
+                        "toImageButtonOptions": {
+                            "format": "png",
+                            "filename": "wann-app",
+                            "height": 600,
+                            "width": 800,
+                            "scale": 4,
+                        }
+                    },
+                    # required to render latex
+                    mathjax=True,
+                )
+            ],
+            id="graph-overlay",
+        ),
+        loaderProps={"variant": "dots", "color": "blue", "size": "xl"},
     ),
     dbc.Row(
         [

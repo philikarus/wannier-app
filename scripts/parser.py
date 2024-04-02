@@ -62,7 +62,10 @@ class VaspParser:
         #        ticklabels,
         #    )
         # )
-        ticklabels = [r"$\Gamma$" if l == "GAMMA" else l for l in ticklabels]
+        ticklabels = [
+            r"$\Gamma$" if label == "GAMMA" else r"{}".format(label)
+            for label in ticklabels
+        ]
         return {"ticks": ticks, "ticklabels": ticklabels}
 
 
@@ -126,6 +129,10 @@ class ProjParser:
         self._data.bands = self._data.bands - efermi
 
     @property
+    def is_spin_polarized(self):
+        return self._data.spd.shape[2] == 2
+
+    @property
     def bands(self):
         return self._data.bands
 
@@ -143,9 +150,8 @@ class ProjParser:
 
     @property
     def bands_down(self):
-        num_spin = int(self._data.spd.shape[2])
         num_bands = int(self._data.bands.shape[-1] / 2)
-        if num_spin == 2:
+        if self.is_spin_polarized:
             return self._data.bands[:, num_bands:]
         else:
             raise Exception("Not spin-polarized")
