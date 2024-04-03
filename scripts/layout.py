@@ -230,6 +230,7 @@ control_panel = [
             id="orbital-select",
             label="Select Orbitals",
             data=[],
+            mb=5,
         ),
         md=8,
     ),
@@ -239,6 +240,7 @@ control_panel = [
         placeholder="-4, 4",
         value="-4, 4",
         size="sm",
+        mb=5,
         error=False,
         style={"width": 100},
         rightSection=dmc.ActionIcon(
@@ -248,6 +250,71 @@ control_panel = [
             color="blue",
             variant="subtle",
         ),
+    ),
+    dmc.TextInput(
+        id="band-idx",
+        label="Band Index",
+        size="sm",
+        mb=5,
+        style={"width": 100},
+        rightSection=dmc.ActionIcon(
+            DashIconify(icon="mdi:calculator", width=20),
+            id="calc-band-minmax",
+            n_clicks=0,
+            color="blue",
+            variant="subtle",
+        ),
+    ),
+    html.Div(id="band-minmax"),
+    dbc.Row(
+        [
+            dbc.Col(
+                dmc.TextInput(
+                    id="dis-win",
+                    label="Dis_Win",
+                    size="sm",
+                    mb=5,
+                    style={"width": 100},
+                )
+            ),
+            dbc.Col(
+                dmc.Switch(
+                    id="switch-dis-win",
+                    onLabel="ON",
+                    offLabel="OFF",
+                    size="lg",
+                    mb=5,
+                    radius="lg",
+                    checked=False,
+                ),
+            ),
+        ],
+        align="end",
+    ),
+    dbc.Row(
+        [
+            dbc.Col(
+                dmc.TextInput(
+                    id="froz-win",
+                    label="Froz_Win",
+                    size="sm",
+                    mb=5,
+                    style={"width": 100},
+                )
+            ),
+            dbc.Col(
+                dmc.Switch(
+                    id="switch-froz-win",
+                    onLabel="ON",
+                    offLabel="OFF",
+                    size="lg",
+                    mb=5,
+                    radius="lg",
+                    checked=False,
+                ),
+            ),
+        ],
+        align="end",
     ),
 ]
 

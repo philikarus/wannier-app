@@ -126,6 +126,7 @@ class ProjParser:
         pattern = r'<i name="efermi">\s*([\d.-]+)\s*</i>'
         matches = re.findall(pattern, contents)
         efermi = float(matches[0])
+        self.efermi = efermi
         self._data.bands = self._data.bands - efermi
 
     @property
@@ -160,6 +161,7 @@ class ProjParser:
     def weights(self):
         return self._data.spd
 
+    @block_stdout
     def select_atom_and_orb(
         self, ispin: list[int], atoms: list[int], orbs: list[int], separate=False
     ) -> None:

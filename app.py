@@ -5,7 +5,7 @@ import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, Input, Output, Patch, State, clientside_callback
+from dash import Dash, Input, Output, Patch, State, clientside_callback, html
 from dash.exceptions import PreventUpdate
 from scripts.layout import layout
 from scripts.parser import ProjParser, VaspParser, WannParser
@@ -17,6 +17,8 @@ HOME_DIR = os.path.expanduser("~")
 VASP_COLOR = px.colors.qualitative.Plotly[0]
 WANN_COLOR = px.colors.qualitative.Plotly[1]
 PROJ_COLOR = "Agsunset"
+DIS_WIN_COLOR = px.colors.qualitative.Pastel[1]
+FROZ_WIN_COLOR = px.colors.qualitative.Pastel[0]
 SYMMLINE_COLOR = px.colors.qualitative.Prism[10]
 
 
@@ -168,7 +170,7 @@ clientside_callback(
         State("wann-input", "value"),
     ],
 )
-def update_control_options(n_clicks, vasp_data, kpoints_data, proj_data, wann_data):
+def update_path_and_options(n_clicks, vasp_data, kpoints_data, proj_data, wann_data):
     atom_list = []
     orbital_list = []
     loaded_data = {}
@@ -214,18 +216,85 @@ def update_yrange(n_clicks, y_range):
 
 
 @app.callback(
+    Output("band-minmax", "children"),
+    [
+        Input("calc-band-minmax", "n_clicks"),
+        Input("band-idx", "value"),
+        State("loaded-data", "data"),
+        State("atom-select", "value"),
+        State("orbital-select", "value"),
+    ],
+)
+def get_band_min_max(n_clicks, band_idx, loaded_data, atoms, orbitals):
+    if n_clicks > 0:
+        proj_data = loaded_data.get("proj", None)
+        vasp_data = loaded_data.get("vasp", None)
+        kpoints_data = loaded_data.get("kpoints", None)
+
+        if proj_data and vasp_data and kpoints_data:
+            vasp = VaspParser(vasp_data, kpoints_data)
+            vasp_proj = ProjParser(proj_data, vasp_xml=vasp_data)
+            efermi = vasp_proj.efermi
+            atom_list = vasp.atom_list
+            atoms = list(find_indices(atom_list, atoms))
+            orbital_list = vasp_proj.orbitals
+            orbitals = list(find_indices(orbital_list, orbitals))
+            vasp_proj.select_atom_and_orb([0], atoms, orbitals)
+            if band_idx:
+                band_idx = int(band_idx)
+            band = vasp_proj.bands[:, band_idx - 1]
+            band_min = band.min()
+            band_min_nofermi = band_min - efermi
+            band_max = band.max()
+            band_max_nofermi = band_max - efermi
+
+            data = {
+                "Emin": band_min,
+                "Emin+Ef": band_min_nofermi,
+                "Emax": band_max,
+                "Emax+Ef": band_max_nofermi,
+            }
+
+            return [
+                html.Div(
+                    [
+                        html.Span(
+                            key + " : ",
+                            style={
+                                "display": "inline-block",
+                                "width": "100px",
+                                "text-align": "left",
+                            },
+                        ),
+                        html.Span(
+                            "{:.3f} eV".format(value),
+                            style={
+                                "display": "inline-block",
+                                "width": "100px",
+                                "text-align": "right",
+                            },
+                        ),
+                    ],
+                    style={"margin-bottom": "5px"},
+                )
+                for key, value in data.items()
+            ]
+
+
+@app.callback(
     Output("graph", "figure"),
     [
         State("checklist", "value"),
         Input("generate-button", "n_clicks"),
-        # State("wann-input", "value"),
-        # State("vasp-input", "value"),
-        # State("kpoints-input", "value"),
-        # State("proj-input", "value"),
         State("loaded-data", "data"),
         State("atom-select", "value"),
         State("orbital-select", "value"),
         State("yrange", "value"),
+        # TODO: Symplify logic
+        State("dis-win", "value"),
+        Input("switch-dis-win", "checked"),
+        State("froz-win", "value"),
+        Input("switch-froz-win", "checked"),
     ],
 )
 def update_figure(
@@ -239,6 +308,10 @@ def update_figure(
     atoms,
     orbitals,
     y_range,
+    dis_win,
+    switch_dis_win_checked,
+    froz_win,
+    switch_froz_win_checked,
 ):
     fig = go.Figure()
     y_min = float(y_range.replace(" ", "").split(",")[0])
@@ -318,6 +391,30 @@ def update_figure(
                 # yrange=y_range,
                 label="projected band",
             )
+
+        if switch_dis_win_checked > 0:
+            if dis_win:
+                dis_win_min = float(dis_win.replace(" ", "").split(",")[0])
+                dis_win_max = float(dis_win.replace(" ", "").split(",")[1])
+                fig.add_hrect(
+                    y0=dis_win_min,
+                    y1=dis_win_max,
+                    line_width=0,
+                    fillcolor=DIS_WIN_COLOR,
+                    opacity=0.2,
+                )
+
+        if switch_froz_win_checked > 0:
+            if froz_win:
+                froz_win_min = float(froz_win.replace(" ", "").split(",")[0])
+                froz_win_max = float(froz_win.replace(" ", "").split(",")[1])
+                fig.add_hrect(
+                    y0=froz_win_min,
+                    y1=froz_win_max,
+                    line_width=0,
+                    fillcolor=FROZ_WIN_COLOR,
+                    opacity=0.2,
+                )
 
         fig.update_layout(layout)
         make_symm_lines(fig, vasp.ticks, color=SYMMLINE_COLOR, use_dash=False)
