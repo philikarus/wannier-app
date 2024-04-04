@@ -2,8 +2,7 @@ import os
 import sys
 from functools import wraps
 
-from dash import html
-from dash_iconify import DashIconify
+from .config import WORK_DIR
 
 
 class StdoutNull:
@@ -38,9 +37,8 @@ def generate_path_completions(path):
     This generates a list of paths for dash dropdown options
     """
     path_completions = []
-    # home_dir = os.path.expanduser("~")
-    home_dir = "/data"
-    abs_path = os.path.join(home_dir, path)
+    # WORK_DIR = os.path.expanduser("~")
+    abs_path = os.path.join(WORK_DIR, path)
     if os.path.isdir(abs_path):
         files_and_dirs = os.listdir(abs_path)
         dirs_only = [
@@ -55,7 +53,7 @@ def generate_path_completions(path):
         files_and_dirs_no_hidden = [f for f in files_and_dirs if not f.startswith(".")]
         for item in files_and_dirs_no_hidden:
             item_path = os.path.join(path, item)
-            abs_item_path = os.path.join(home_dir, item_path)
+            abs_item_path = os.path.join(WORK_DIR, item_path)
             if os.path.isdir(abs_item_path):
                 path_completions.append(
                     {

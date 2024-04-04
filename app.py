@@ -1,25 +1,17 @@
 import os
 
-import dash
 import dash_bootstrap_components as dbc
-import dash_mantine_components as dmc
-import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, Patch, State, clientside_callback, html
 from dash.exceptions import PreventUpdate
+
+from scripts.config import (DIS_WIN_COLOR, FROZ_WIN_COLOR, PROJ_COLOR,
+                            SYMMLINE_COLOR, VASP_COLOR, WANN_COLOR, WORK_DIR)
 from scripts.layout import layout
 from scripts.parser import ProjParser, VaspParser, WannParser
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
-from scripts.utils import check_yrange_input, find_indices, generate_path_completions
-
-HOME_DIR = "/data"
-VASP_COLOR = px.colors.qualitative.Plotly[0]
-WANN_COLOR = px.colors.qualitative.Plotly[1]
-PROJ_COLOR = "Agsunset"
-DIS_WIN_COLOR = px.colors.qualitative.Pastel[1]
-FROZ_WIN_COLOR = px.colors.qualitative.Pastel[0]
-SYMMLINE_COLOR = px.colors.qualitative.Prism[10]
-
+from scripts.utils import (check_yrange_input, find_indices,
+                           generate_path_completions)
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
@@ -175,20 +167,20 @@ def update_path_and_options(n_clicks, vasp_data, kpoints_data, proj_data, wann_d
     loaded_data = {}
     if n_clicks > 0:
         if vasp_data:
-            vasp_data = os.path.join(HOME_DIR, vasp_data)
+            vasp_data = os.path.join(WORK_DIR, vasp_data)
             vasp = VaspParser(vasp_data)
             atom_list = list(set(vasp.atom_list))
             loaded_data["vasp"] = vasp_data
         if proj_data and vasp_data:
-            proj_data = os.path.join(HOME_DIR, proj_data)
+            proj_data = os.path.join(WORK_DIR, proj_data)
             proj = ProjParser(proj_data, vasp_xml=vasp_data)
             orbital_list = proj.orbitals
             loaded_data["proj"] = proj_data
         if kpoints_data:
-            kpoints_data = os.path.join(HOME_DIR, kpoints_data)
+            kpoints_data = os.path.join(WORK_DIR, kpoints_data)
             loaded_data["kpoints"] = kpoints_data
         if wann_data:
-            wann_data = os.path.join(HOME_DIR, wann_data)
+            wann_data = os.path.join(WORK_DIR, wann_data)
             loaded_data["wann"] = wann_data
 
     return atom_list, orbital_list, False, loaded_data
@@ -299,10 +291,6 @@ def get_band_min_max(n_clicks, band_idx, loaded_data, atoms, orbitals):
 def update_figure(
     checklist_values,
     n_clicks,
-    # wann_data,
-    # vasp_data,
-    # kpoints_data,
-    # proj_data,
     loaded_data,
     atoms,
     orbitals,
@@ -340,8 +328,8 @@ def update_figure(
         proj_data = loaded_data.get("proj", None)
 
         if vasp_data and kpoints_data:
-            # vasp_data = os.path.join(HOME_DIR, vasp_data)
-            # kpoints_data = os.path.join(HOME_DIR, kpoints_data)
+            # vasp_data = os.path.join(WORK_DIR, vasp_data)
+            # kpoints_data = os.path.join(WORK_DIR, kpoints_data)
             vasp = VaspParser(vasp_data, kpoints_data)
             x_range = [vasp.kpath[0], vasp.kpath[-1]]
             layout["xaxis"]["range"] = x_range
@@ -358,8 +346,8 @@ def update_figure(
             # make_symm_lines(fig, vasp.ticks, color="black")
 
         if "wann" in checklist_values and wann_data:
-            # wann_data = os.path.join(HOME_DIR, wann_data)
-            # vasp_data = os.path.join(HOME_DIR, vasp_data)
+            # wann_data = os.path.join(WORK_DIR, wann_data)
+            # vasp_data = os.path.join(WORK_DIR, vasp_data)
             wann = WannParser(wann_data, vasp_xml=vasp_data)
             wann.read_file()
             plain_bandplot(
@@ -372,7 +360,7 @@ def update_figure(
             )
 
         if "proj" in checklist_values and proj_data:
-            # proj_data = os.path.join(HOME_DIR, proj_data)
+            # proj_data = os.path.join(WORK_DIR, proj_data)
             vasp_proj = ProjParser(proj_data, vasp_xml=vasp_data)
             atom_list = vasp.atom_list
             atoms = list(find_indices(atom_list, atoms))
