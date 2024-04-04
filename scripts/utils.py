@@ -38,7 +38,8 @@ def generate_path_completions(path):
     This generates a list of paths for dash dropdown options
     """
     path_completions = []
-    home_dir = os.path.expanduser("~")
+    # home_dir = os.path.expanduser("~")
+    home_dir = "/data"
     abs_path = os.path.join(home_dir, path)
     if os.path.isdir(abs_path):
         files_and_dirs = os.listdir(abs_path)

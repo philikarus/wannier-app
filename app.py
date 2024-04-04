@@ -10,10 +10,9 @@ from dash.exceptions import PreventUpdate
 from scripts.layout import layout
 from scripts.parser import ProjParser, VaspParser, WannParser
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
-from scripts.utils import (check_yrange_input, find_indices,
-                           generate_path_completions)
+from scripts.utils import check_yrange_input, find_indices, generate_path_completions
 
-HOME_DIR = os.path.expanduser("~")
+HOME_DIR = "/data"
 VASP_COLOR = px.colors.qualitative.Plotly[0]
 WANN_COLOR = px.colors.qualitative.Plotly[1]
 PROJ_COLOR = "Agsunset"
@@ -423,4 +422,4 @@ def update_figure(
         return go.Figure(layout=layout)
 
 
-app.run_server(debug=True)
+app.run_server(host="0.0.0.0", debug=True)
