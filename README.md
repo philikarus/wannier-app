@@ -14,8 +14,9 @@ pip install -r requirements.txt
 
 ## Docker
 
-A Docker image has been built for this app. You can start a container by running the following command:
+A Docker image has been built and published on Docker Hub. You can fetch the image by:
 
 ```bash
-docker run -p 8060:8060 -d --name wann-app wannier-app:0.9
+docker pull philikarus/wannier-app:0.9
 `
+```
