@@ -6,7 +6,12 @@ from dash_iconify import DashIconify
 
 def make_dmc_tooltips(child, label, **kwargs):
     return dmc.Tooltip(
-        label=label, children=[child], position="right", transition="pop", **kwargs
+        label=label,
+        children=[child],
+        position="right",
+        transition="pop",
+        withArrow=True,
+        **kwargs
     )
 
 
@@ -170,15 +175,8 @@ file_input_panel = [
     ),
 ]
 
-yrange_tooltips = dbc.Tooltip(
-    "format: y_min, y_max",
-    id="yrange-tooltip",
-    target="yrange",
-    placement="right-end",
-)
 
 control_panel = [
-    html.Div(yrange_tooltips),
     dbc.Col(
         make_dmc_tooltips(
             dmc.Button(
@@ -234,55 +232,83 @@ control_panel = [
         ),
         md=8,
     ),
-    dmc.TextInput(
-        id="yrange",
-        label="Y-axis Limit",
-        placeholder="-4, 4",
-        value="-4, 4",
-        size="sm",
-        mb=5,
-        error=False,
-        style={"width": 100},
-        rightSection=dmc.ActionIcon(
-            DashIconify(icon="material-symbols:sync", width=20),
-            id="update-yrange",
-            # size="lg",
-            color="blue",
-            variant="subtle",
+    make_dmc_tooltips(
+        dmc.TextInput(
+            id="yrange",
+            label="Y-axis Limit",
+            placeholder="-4, 4",
+            value="-4, 4",
+            size="sm",
+            mb=5,
+            error=False,
+            style={"width": 100},
+            rightSection=dmc.ActionIcon(
+                DashIconify(icon="material-symbols:sync", width=20),
+                id="update-yrange",
+                # size="lg",
+                color="blue",
+                variant="subtle",
+            ),
         ),
+        label="Format: y_min, y_max",
+        color="gray",
     ),
-    dmc.TextInput(
-        id="band-idx",
-        label="Band Index",
-        size="sm",
-        mb=5,
-        style={"width": 100},
-        rightSection=dmc.ActionIcon(
-            DashIconify(icon="mdi:calculator", width=20),
-            id="calc-band-minmax",
-            n_clicks=0,
-            color="blue",
-            variant="subtle",
+    make_dmc_tooltips(
+        dmc.TextInput(
+            id="band-idx",
+            label="Band Index",
+            size="sm",
+            mb=5,
+            style={"width": 100},
+            rightSection=dmc.ActionIcon(
+                DashIconify(icon="mdi:calculator", width=20),
+                id="calc-band-minmax",
+                n_clicks=0,
+                color="blue",
+                variant="subtle",
+            ),
         ),
+        label=html.P(
+            [
+                "Get min/max energy for given band.",
+                html.Br(),
+                "Use 1-based index (eg, 1).",
+            ]
+        ),
+        color="gray",
     ),
     html.Div(id="band-minmax"),
     dbc.Row(
         [
             dbc.Col(
-                dmc.TextInput(
-                    id="dis-win",
-                    label="Dis_Win",
-                    size="sm",
-                    mb=5,
-                    style={"width": 100},
-                )
+                make_dmc_tooltips(
+                    dmc.TextInput(
+                        id="dis-win",
+                        label="Dis_Win",
+                        size="sm",
+                        mb=5,
+                        style={"width": 100},
+                        rightSection=dmc.ActionIcon(
+                            DashIconify(icon="material-symbols:sync", width=20),
+                            id="update-dis-win-button",
+                            n_clicks=0,
+                            disabled=True,
+                            # size="lg",
+                            color="blue",
+                            variant="subtle",
+                        ),
+                    ),
+                    label="Format: min, max",
+                    color="gray",
+                ),
+                md=4,
             ),
             dbc.Col(
                 dmc.Switch(
                     id="switch-dis-win",
                     onLabel="ON",
                     offLabel="OFF",
-                    size="lg",
+                    size="md",
                     mb=5,
                     radius="lg",
                     checked=False,
@@ -294,20 +320,34 @@ control_panel = [
     dbc.Row(
         [
             dbc.Col(
-                dmc.TextInput(
-                    id="froz-win",
-                    label="Froz_Win",
-                    size="sm",
-                    mb=5,
-                    style={"width": 100},
-                )
+                make_dmc_tooltips(
+                    dmc.TextInput(
+                        id="froz-win",
+                        label="Froz_Win",
+                        size="sm",
+                        mb=5,
+                        style={"width": 100},
+                        rightSection=dmc.ActionIcon(
+                            DashIconify(icon="material-symbols:sync", width=20),
+                            id="update-froz-win-button",
+                            n_clicks=0,
+                            disabled=True,
+                            # size="lg",
+                            color="blue",
+                            variant="subtle",
+                        ),
+                    ),
+                    label="Format: min, max",
+                    color="gray",
+                ),
+                md=4,
             ),
             dbc.Col(
                 dmc.Switch(
                     id="switch-froz-win",
                     onLabel="ON",
                     offLabel="OFF",
-                    size="lg",
+                    size="md",
                     mb=5,
                     radius="lg",
                     checked=False,

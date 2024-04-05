@@ -54,14 +54,6 @@ class VaspParser:
         ticks = list(set(self._data["ticks"]["distance"]))
         ticklabels = self._data["ticks"]["label"]
         ticklabels = [ticklabels[0]] + list(set(ticklabels[1:-1])) + [ticklabels[-1]]
-        # ticklabels = list(
-        #    map(
-        #        lambda x: (
-        #            r"$\{}$".format(x.lower().capitalize()) if "GAMMA" in x else r"{}".format(x)
-        #        ),
-        #        ticklabels,
-        #    )
-        # )
         ticklabels = [
             r"$\Gamma$" if label == "GAMMA" else r"{}".format(label)
             for label in ticklabels

@@ -273,6 +273,118 @@ def get_band_min_max(n_clicks, band_idx, loaded_data, atoms, orbitals):
 
 
 @app.callback(
+    [
+        Output("graph", "figure", allow_duplicate=True),
+        Output("update-dis-win-button", "disabled"),
+    ],
+    [
+        State("dis-win", "value"),
+        Input("switch-dis-win", "checked"),
+    ],
+    prevent_initial_call=True,
+)
+def update_dis_win(dis_win, switch_dis_win_checked):
+    patched_figure = Patch()
+    disabled = True
+    if switch_dis_win_checked:
+        disabled = False
+        if dis_win:
+            dis_win_min = float(dis_win.replace(" ", "").split(",")[0])
+            dis_win_max = float(dis_win.replace(" ", "").split(",")[1])
+
+            hrec = {
+                "type": "rect",
+                "fillcolor": DIS_WIN_COLOR,
+                "line": {"width": 0},
+                "opacity": 0.2,
+                "x0": 0,
+                "y0": dis_win_min,
+                "x1": 1,
+                "y1": dis_win_max,
+                "xref": "x domain",
+                "yref": "y",
+            }
+            patched_figure["layout"]["shapes"].append(hrec)
+    else:
+        del patched_figure["layout"]["shapes"][-1]
+
+    return patched_figure, disabled
+
+
+@app.callback(
+    Output("graph", "figure", allow_duplicate=True),
+    [Input("update-dis-win-button", "n_clicks"), State("dis-win", "value")],
+    prevent_initial_call=True,
+)
+def update_dis_win_range(n_clicks, dis_win):
+    patched_figure = Patch()
+    if n_clicks > 0:
+        if dis_win:
+            dis_win_min = float(dis_win.replace(" ", "").split(",")[0])
+            dis_win_max = float(dis_win.replace(" ", "").split(",")[1])
+            patched_figure["layout"]["shapes"][-1]["y0"] = dis_win_min
+            patched_figure["layout"]["shapes"][-1]["y1"] = dis_win_max
+
+    return patched_figure
+
+
+@app.callback(
+    [
+        Output("graph", "figure", allow_duplicate=True),
+        Output("update-froz-win-button", "disabled"),
+    ],
+    [
+        State("froz-win", "value"),
+        Input("switch-froz-win", "checked"),
+    ],
+    prevent_initial_call=True,
+)
+def update_froz_win(froz_win, switch_froz_win_checked):
+    patched_figure = Patch()
+    disabled = True
+    if switch_froz_win_checked:
+        disabled = False
+        if froz_win:
+            froz_win_min = float(froz_win.replace(" ", "").split(",")[0])
+            froz_win_max = float(froz_win.replace(" ", "").split(",")[1])
+
+            hrec = {
+                "type": "rect",
+                "fillcolor": FROZ_WIN_COLOR,
+                "line": {"width": 0},
+                "opacity": 0.2,
+                "x0": 0,
+                "y0": froz_win_min,
+                "x1": 1,
+                "y1": froz_win_max,
+                "xref": "x domain",
+                "yref": "y",
+            }
+            patched_figure["layout"]["shapes"].insert(0, hrec)
+    else:
+        del patched_figure["layout"]["shapes"][0]
+
+    return patched_figure, disabled
+
+
+@app.callback(
+    Output("graph", "figure", allow_duplicate=True),
+    [Input("update-froz-win-button", "n_clicks"), State("froz-win", "value")],
+    prevent_initial_call=True,
+)
+def update_froz_win_range(n_clicks, froz_win):
+    patched_figure = Patch()
+    if n_clicks > 0:
+        if froz_win:
+            froz_win_min = float(froz_win.replace(" ", "").split(",")[0])
+            froz_win_max = float(froz_win.replace(" ", "").split(",")[1])
+            patched_figure["layout"]["shapes"][0]["y0"] = froz_win_min
+            patched_figure["layout"]["shapes"][0]["y1"] = froz_win_max
+
+    return patched_figure
+
+
+@app.callback(
     Output("graph", "figure"),
     [
         State("checklist", "value"),
@@ -281,11 +393,6 @@ def get_band_min_max(n_clicks, band_idx, loaded_data, atoms, orbitals):
         State("atom-select", "value"),
         State("orbital-select", "value"),
         State("yrange", "value"),
-        # TODO: Symplify logic
-        State("dis-win", "value"),
-        Input("switch-dis-win", "checked"),
-        State("froz-win", "value"),
-        Input("switch-froz-win", "checked"),
     ],
 )
 def update_figure(
@@ -295,10 +402,10 @@ def update_figure(
     atoms,
     orbitals,
     y_range,
-    dis_win,
-    switch_dis_win_checked,
-    froz_win,
-    switch_froz_win_checked,
+    # dis_win,
+    # switch_dis_win_checked,
+    # froz_win,
+    # switch_froz_win_checked,
 ):
     fig = go.Figure()
     y_min = float(y_range.replace(" ", "").split(",")[0])
@@ -379,29 +486,29 @@ def update_figure(
                 label="projected band",
             )
 
-        if switch_dis_win_checked > 0:
-            if dis_win:
-                dis_win_min = float(dis_win.replace(" ", "").split(",")[0])
-                dis_win_max = float(dis_win.replace(" ", "").split(",")[1])
-                fig.add_hrect(
-                    y0=dis_win_min,
-                    y1=dis_win_max,
-                    line_width=0,
-                    fillcolor=DIS_WIN_COLOR,
-                    opacity=0.2,
-                )
+        # if switch_dis_win_checked > 0:
+        #    if dis_win:
+        #        dis_win_min = float(dis_win.replace(" ", "").split(",")[0])
+        #        dis_win_max = float(dis_win.replace(" ", "").split(",")[1])
+        #        fig.add_hrect(
+        #            y0=dis_win_min,
+        #            y1=dis_win_max,
+        #            line_width=0,
+        #            fillcolor=DIS_WIN_COLOR,
+        #            opacity=0.2,
+        #        )
 
-        if switch_froz_win_checked > 0:
-            if froz_win:
-                froz_win_min = float(froz_win.replace(" ", "").split(",")[0])
-                froz_win_max = float(froz_win.replace(" ", "").split(",")[1])
-                fig.add_hrect(
-                    y0=froz_win_min,
-                    y1=froz_win_max,
-                    line_width=0,
-                    fillcolor=FROZ_WIN_COLOR,
-                    opacity=0.2,
-                )
+        # if switch_froz_win_checked > 0:
+        #    if froz_win:
+        #        froz_win_min = float(froz_win.replace(" ", "").split(",")[0])
+        #        froz_win_max = float(froz_win.replace(" ", "").split(",")[1])
+        #        fig.add_hrect(
+        #            y0=froz_win_min,
+        #            y1=froz_win_max,
+        #            line_width=0,
+        #            fillcolor=FROZ_WIN_COLOR,
+        #            opacity=0.2,
+        #        )
 
         fig.update_layout(layout)
         make_symm_lines(fig, vasp.ticks, color=SYMMLINE_COLOR, use_dash=False)
