@@ -5,13 +5,19 @@ import plotly.graph_objects as go
 from dash import Dash, Input, Output, Patch, State, clientside_callback, html
 from dash.exceptions import PreventUpdate
 
-from scripts.config import (DIS_WIN_COLOR, FROZ_WIN_COLOR, PROJ_COLOR,
-                            SYMMLINE_COLOR, VASP_COLOR, WANN_COLOR, WORK_DIR)
+from scripts.config import (
+    DIS_WIN_COLOR,
+    FROZ_WIN_COLOR,
+    PROJ_COLOR,
+    SYMMLINE_COLOR,
+    VASP_COLOR,
+    WANN_COLOR,
+    WORK_DIR,
+)
 from scripts.layout import layout
 from scripts.parser import ProjParser, VaspParser, WannParser
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
-from scripts.utils import (check_yrange_input, find_indices,
-                           generate_path_completions)
+from scripts.utils import check_yrange_input, find_indices, generate_path_completions
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
@@ -517,4 +523,7 @@ def update_figure(
         return go.Figure(layout=layout)
 
 
-app.run_server(host="0.0.0.0", debug=True)
+server = app.server
+
+if __name__ == "__main__":
+    app.run_server(debug=False)
