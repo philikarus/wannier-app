@@ -16,6 +16,7 @@ ADD src/scripts /app/scripts
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Run the application
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--workers", "4", "--bind", "0.0.0.0:8050", "app:server"]
+
 
 
