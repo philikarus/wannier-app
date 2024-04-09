@@ -5,19 +5,14 @@ import plotly.graph_objects as go
 from dash import Dash, Input, Output, Patch, State, clientside_callback, html
 from dash.exceptions import PreventUpdate
 
-from scripts.config import (
-    DIS_WIN_COLOR,
-    FROZ_WIN_COLOR,
-    PROJ_COLOR,
-    SYMMLINE_COLOR,
-    VASP_COLOR,
-    WANN_COLOR,
-    WORK_DIR,
-)
+from scripts.config import (DIS_WIN_COLOR, FROZ_WIN_COLOR, PROJ_COLOR,
+                            SYMMLINE_COLOR, VASP_COLOR, VASP_COLOR2,
+                            WANN_COLOR, WORK_DIR)
 from scripts.layout import layout
 from scripts.parser import ProjParser, VaspParser, WannParser
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
-from scripts.utils import check_yrange_input, find_indices, generate_path_completions
+from scripts.utils import (check_yrange_input, find_indices,
+                           generate_path_completions)
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.COSMO])
 
@@ -158,6 +153,7 @@ clientside_callback(
         Output("orbital-select", "data"),
         Output("load-data", "loading"),
         Output("loaded-data", "data"),
+        Output("spin-pol", "disabled"),
     ],
     [
         Input("load-data", "n_clicks"),
@@ -171,25 +167,29 @@ def update_path_and_options(n_clicks, vasp_data, kpoints_data, proj_data, wann_d
     atom_list = []
     orbital_list = []
     loaded_data = {}
+    disable_spin = True
     if n_clicks > 0:
-        if vasp_data:
+        if vasp_data and kpoints_data:
             vasp_data = os.path.join(WORK_DIR, vasp_data)
-            vasp = VaspParser(vasp_data)
+            kpoints_data = os.path.join(WORK_DIR, kpoints_data)
+            vasp = VaspParser(vasp_data, kpoints_data)
             atom_list = list(set(vasp.atom_list))
             loaded_data["vasp"] = vasp_data
+            loaded_data["kpoints"] = kpoints_data
+            disable_spin = not vasp.is_spin_polarized
         if proj_data and vasp_data:
             proj_data = os.path.join(WORK_DIR, proj_data)
             proj = ProjParser(proj_data, vasp_xml=vasp_data)
             orbital_list = proj.orbitals
             loaded_data["proj"] = proj_data
-        if kpoints_data:
-            kpoints_data = os.path.join(WORK_DIR, kpoints_data)
-            loaded_data["kpoints"] = kpoints_data
+        # if kpoints_data:
+        #    kpoints_data = os.path.join(WORK_DIR, kpoints_data)
+        #    loaded_data["kpoints"] = kpoints_data
         if wann_data:
             wann_data = os.path.join(WORK_DIR, wann_data)
             loaded_data["wann"] = wann_data
 
-    return atom_list, orbital_list, False, loaded_data
+    return atom_list, orbital_list, False, loaded_data, disable_spin
 
 
 @app.callback(Output("yrange", "error"), Input("yrange", "value"))
@@ -399,6 +399,7 @@ def update_froz_win_range(n_clicks, froz_win):
         State("atom-select", "value"),
         State("orbital-select", "value"),
         State("yrange", "value"),
+        State("spin-pol", "checked"),
     ],
 )
 def update_figure(
@@ -408,6 +409,7 @@ def update_figure(
     atoms,
     orbitals,
     y_range,
+    spin_polarized,
     # dis_win,
     # switch_dis_win_checked,
     # froz_win,
@@ -441,26 +443,39 @@ def update_figure(
         proj_data = loaded_data.get("proj", None)
 
         if vasp_data and kpoints_data:
-            # vasp_data = os.path.join(WORK_DIR, vasp_data)
-            # kpoints_data = os.path.join(WORK_DIR, kpoints_data)
             vasp = VaspParser(vasp_data, kpoints_data)
             x_range = [vasp.kpath[0], vasp.kpath[-1]]
             layout["xaxis"]["range"] = x_range
 
-        if "vasp" in checklist_values:
-            plain_bandplot(
-                fig,
-                vasp.kpath,
-                vasp.bands,
-                # yrange=y_range,
-                color=VASP_COLOR,
-                label="vasp band",
-            )
-            # make_symm_lines(fig, vasp.ticks, color="black")
+        if "vasp" in checklist_values and vasp:
+            if spin_polarized:
+                plain_bandplot(
+                    fig,
+                    vasp.kpath,
+                    vasp.bands_up,
+                    # yrange=y_range,
+                    color=VASP_COLOR,
+                    label="vasp spin up",
+                )
+                plain_bandplot(
+                    fig,
+                    vasp.kpath,
+                    vasp.bands_down,
+                    # yrange=y_range,
+                    color=VASP_COLOR2,
+                    label="vasp band down",
+                )
+            else:
+                plain_bandplot(
+                    fig,
+                    vasp.kpath,
+                    vasp.bands,
+                    # yrange=y_range,
+                    color=VASP_COLOR,
+                    label="vasp band",
+                )
 
         if "wann" in checklist_values and wann_data:
-            # wann_data = os.path.join(WORK_DIR, wann_data)
-            # vasp_data = os.path.join(WORK_DIR, vasp_data)
             wann = WannParser(wann_data, vasp_xml=vasp_data)
             wann.read_file()
             plain_bandplot(
@@ -473,7 +488,6 @@ def update_figure(
             )
 
         if "proj" in checklist_values and proj_data:
-            # proj_data = os.path.join(WORK_DIR, proj_data)
             vasp_proj = ProjParser(proj_data, vasp_xml=vasp_data)
             atom_list = vasp.atom_list
             atoms = list(find_indices(atom_list, atoms))

@@ -41,7 +41,9 @@ class VaspParser:
     @property
     def bands_down(self):
         if self.is_spin_polarized:
-            return np.vstack([seg.T for seg in self._data["energy"]["-1"]])
+            return (
+                np.vstack([seg.T for seg in self._data["energy"]["-1"]]) - self.efermi
+            )
         else:
             raise Exception("Not spin polarized")
 

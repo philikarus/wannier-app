@@ -214,6 +214,17 @@ control_panel = [
         md=12,
     ),
     dbc.Col(
+        dmc.Switch(
+            id="spin-pol",
+            label="show spin polarized band",
+            size="md",
+            radius="lg",
+            checked=False,
+            disabled=True,
+            mb=5,
+        )
+    ),
+    dbc.Col(
         dmc.MultiSelect(
             id="atom-select",
             label="Select Atoms",
@@ -366,13 +377,14 @@ graph_panel = [
                 dcc.Graph(
                     id="graph",
                     config={
+                        "displaylogo": False,
                         "toImageButtonOptions": {
                             "format": "png",
                             "filename": "wann-app",
                             "height": 600,
                             "width": 800,
                             "scale": 4,
-                        }
+                        },
                     },
                     # required to render latex
                     mathjax=True,
