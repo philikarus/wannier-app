@@ -4,4 +4,5 @@ data/
 *.pyc
 *.css*
 .venv/
+cli/
 

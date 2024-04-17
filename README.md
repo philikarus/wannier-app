@@ -21,18 +21,24 @@ pip install -r requirements.txt
 A [Docker](https://www.docker.com/) image has been built and published on Docker Hub. You can fetch the image by:
 
 ```bash
-docker pull philikarus/wannier-app:0.9
+docker pull philikarus/wannier-app:0.9.3
 `
 ```
 
-A `run_docker.sh` script is provided to help you run the app in a Docker container. You can start the container by:
+A `run_wann_app` script is provided to help you run the app in a Docker container. You can start the container by:
 
 ```bash
-bash run_docker.sh start
+run_wann_app start
 ```
 
 and stop the container by:
 
 ```bash
-bash run_docker.sh stop
+run_wann_app stop
+```
+
+To see help information, use:
+
+```bash
+run_wann_app --help
 ```
