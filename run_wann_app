@@ -267,6 +267,7 @@ run_wann_app_start_command() {
   	if [[ "$ava_versions" =~ $select_version ]]; then
   		docker run -d -p "$port":8050 -v "$HOME":/data --name "$app_name" wannier-app:$select_version >/dev/null
   		echo "A docker container named $app_name has been created."
+  		echo "$user, You are using port $port"
   	else
   		echo "No such version!"
   		exit 1
