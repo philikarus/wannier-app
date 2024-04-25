@@ -18,16 +18,43 @@ else:
     from pyprocar.core import ProcarSelect
 
 
+class ParseXmlError(Exception):
+    def __init__(self):
+        super().__init__("Can't parse xml file")
+
+
+class ParseKpointsError(Exception):
+    def __init__(self):
+        super().__init__("Can't parse kpoints file")
+
+
+class ParseProcarError(Exception):
+    def __init__(self):
+        super().__init__("Can't parse procar file")
+
+
+class ParseWannError(Exception):
+    def __init__(self):
+        super().__init__("Can't parse wannier90_band.dat file")
+
+
 class VaspParser:
     def __init__(self, vasp_xml: str, kpoint_file: Optional[str] = None):
-        vasprun = BSVasprun(vasp_xml)
-        self.atom_list: list[str] = vasprun.atomic_symbols
+        try:
+            vasprun = BSVasprun(vasp_xml)
+            self.atom_list: list[str] = vasprun.atomic_symbols
+        except Exception:
+            raise ParseXmlError
+
         if kpoint_file:
-            bs_symm = vasprun.get_band_structure(kpoint_file, line_mode=True)
-            bs_plotter = BSPlotter(bs_symm)
-            self.efermi = bs_symm.efermi
-            self._data = bs_plotter.bs_plot_data(zero_to_efermi=False)
-            self.is_spin_polarized = bs_symm.is_spin_polarized
+            try:
+                bs_symm = vasprun.get_band_structure(kpoint_file, line_mode=True)
+                bs_plotter = BSPlotter(bs_symm)
+                self.efermi = bs_symm.efermi
+                self._data = bs_plotter.bs_plot_data(zero_to_efermi=False)
+                self.is_spin_polarized = bs_symm.is_spin_polarized
+            except Exception:
+                raise ParseKpointsError
 
     @property
     def bands(self):
@@ -70,16 +97,19 @@ class WannParser:
         self._data = None
 
     def read_file(self) -> None:
-        band_data = pd.read_csv(
-            self.bandfile, comment="#", delim_whitespace=True, header=None
-        )
+        try:
+            band_data = pd.read_csv(
+                self.bandfile, comment="#", delim_whitespace=True, header=None
+            )
 
-        num_bands = band_data.shape[1] - 1
-        columns = [("kpath", "")]
-        columns += [("bands", i) for i in range(1, num_bands + 1)]
-        columns = MultiIndex.from_tuples(columns)
-        band_data.columns = columns
-        self._data = band_data
+            num_bands = band_data.shape[1] - 1
+            columns = [("kpath", "")]
+            columns += [("bands", i) for i in range(1, num_bands + 1)]
+            columns = MultiIndex.from_tuples(columns)
+            band_data.columns = columns
+            self._data = band_data
+        except Exception:
+            raise ParseWannError
 
         if self.vasp_xml:
             self._offset_by_fermi()
@@ -109,10 +139,15 @@ class ProjParser:
         self.procar = procar
         self.vasp_xml = vasp_xml
         pc_parser = ProcarParser()
-        pc_parser.readFile(self.procar)
-        self.orbitals: list[str] = pc_parser.orbitalName[: pc_parser.orbitalCount - 1]
-        self._data = ProcarSelect(pc_parser, deepCopy=True)
-        self._offset_by_fermi()
+        try:
+            pc_parser.readFile(self.procar)
+            self.orbitals: list[str] = pc_parser.orbitalName[
+                : pc_parser.orbitalCount - 1
+            ]
+            self._data = ProcarSelect(pc_parser, deepCopy=True)
+            self._offset_by_fermi()
+        except Exception:
+            raise ParseProcarError
 
     def _offset_by_fermi(self) -> None:
         with open(self.vasp_xml, "r") as f:

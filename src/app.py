@@ -8,8 +8,10 @@ from dash.exceptions import PreventUpdate
 from scripts.config import (DIS_WIN_COLOR, FROZ_WIN_COLOR, PROJ_COLOR,
                             SYMMLINE_COLOR, VASP_COLOR, VASP_COLOR2,
                             WANN_COLOR, WORK_DIR)
-from scripts.layout import input_file_error_info, layout
-from scripts.parser import ProjParser, VaspParser, WannParser
+from scripts.layout import layout, make_error_info
+from scripts.parser import (ParseKpointsError, ParseProcarError,
+                            ParseWannError, ParseXmlError, ProjParser,
+                            VaspParser, WannParser)
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
 from scripts.utils import (check_yrange_input, find_indices,
                            generate_path_completions)
@@ -172,28 +174,38 @@ def update_path_and_options(n_clicks, vasp_data, kpoints_data, proj_data, wann_d
     disable_spin = True
     error_info = []
     if n_clicks > 0:
-        try:
-            if vasp_data and kpoints_data:
-                vasp_data = os.path.join(WORK_DIR, vasp_data)
-                kpoints_data = os.path.join(WORK_DIR, kpoints_data)
+        if vasp_data and kpoints_data:
+            vasp_data = os.path.join(WORK_DIR, vasp_data)
+            kpoints_data = os.path.join(WORK_DIR, kpoints_data)
+            try:
                 vasp = VaspParser(vasp_data, kpoints_data)
                 atom_list = list(set(vasp.atom_list))
                 loaded_data["vasp"] = vasp_data
                 loaded_data["kpoints"] = kpoints_data
                 disable_spin = not vasp.is_spin_polarized
-            if proj_data and vasp_data:
-                proj_data = os.path.join(WORK_DIR, proj_data)
+            except ParseXmlError:
+                error_info.append("vasprun.xml")
+            except ParseKpointsError:
+                error_info.append("KPOINTS")
+
+        if proj_data and vasp_data:
+            proj_data = os.path.join(WORK_DIR, proj_data)
+            try:
                 proj = ProjParser(proj_data, vasp_xml=vasp_data)
                 orbital_list = proj.orbitals
                 loaded_data["proj"] = proj_data
-            # if kpoints_data:
-            #    kpoints_data = os.path.join(WORK_DIR, kpoints_data)
-            #    loaded_data["kpoints"] = kpoints_data
-            if wann_data:
-                wann_data = os.path.join(WORK_DIR, wann_data)
-                loaded_data["wann"] = wann_data
-        except Exception:
-            error_info = input_file_error_info
+            except ParseProcarError:
+                error_info.append("PROCAR")
+
+        # if kpoints_data:
+        #    kpoints_data = os.path.join(WORK_DIR, kpoints_data)
+        #    loaded_data["kpoints"] = kpoints_data
+        if wann_data:
+            wann_data = os.path.join(WORK_DIR, wann_data)
+            loaded_data["wann"] = wann_data
+
+        if len(error_info) > 0:
+            error_info = make_error_info(error_info)
 
     return atom_list, orbital_list, False, loaded_data, disable_spin, error_info
 

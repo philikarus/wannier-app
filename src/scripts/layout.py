@@ -11,7 +11,7 @@ def make_dmc_tooltips(child, label, **kwargs):
         position="right",
         transition="pop",
         withArrow=True,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -36,16 +36,19 @@ def make_dmc_fileinput_tooltips(child):
     )
 
 
-input_file_error_info = [
-    dmc.Notification(
-        id="input-file-error",
-        title="Parse File Error",
-        message="Error encountered when parsing input files. Please use a valid file path.",
-        color="red",
-        action="show",
-        autoClose=5000,
-    ),
-]
+def make_error_info(errors: list[str]):
+    error_msg = " ".join(errors)
+    return [
+        dmc.Notification(
+            id="input-file-error",
+            title="Parse File Error",
+            message=f"Error encountered when parsing following files:\n{error_msg}\nPlease use a valid file path.",
+            color="red",
+            action="show",
+            autoClose=5000,
+        ),
+    ]
+
 
 header = dbc.Navbar(
     dbc.Row(
