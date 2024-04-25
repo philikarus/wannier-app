@@ -259,9 +259,9 @@ def get_band_min_max(n_clicks, band_idx, loaded_data, atoms, orbitals):
                 band_idx = int(band_idx)
             band = vasp_proj.bands[:, band_idx - 1]
             band_min = band.min()
-            band_min_nofermi = band_min - efermi
+            band_min_nofermi = band_min + efermi
             band_max = band.max()
-            band_max_nofermi = band_max - efermi
+            band_max_nofermi = band_max + efermi
 
             data = {
                 "Emin": band_min,
@@ -558,4 +558,4 @@ def update_figure(
 server = app.server
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
