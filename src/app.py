@@ -8,7 +8,7 @@ from dash.exceptions import PreventUpdate
 from scripts.config import (DIS_WIN_COLOR, FROZ_WIN_COLOR, PROJ_COLOR,
                             SYMMLINE_COLOR, VASP_COLOR, VASP_COLOR2,
                             WANN_COLOR, WORK_DIR)
-from scripts.layout import layout
+from scripts.layout import input_file_error_info, layout
 from scripts.parser import ProjParser, VaspParser, WannParser
 from scripts.plot import make_symm_lines, plain_bandplot, proj_bandplot
 from scripts.utils import (check_yrange_input, find_indices,
@@ -154,6 +154,7 @@ clientside_callback(
         Output("load-data", "loading"),
         Output("loaded-data", "data"),
         Output("spin-pol", "disabled"),
+        Output("notify-container", "children"),
     ],
     [
         Input("load-data", "n_clicks"),
@@ -162,34 +163,39 @@ clientside_callback(
         State("proj-input", "value"),
         State("wann-input", "value"),
     ],
+    prevent_initial_call=True,
 )
 def update_path_and_options(n_clicks, vasp_data, kpoints_data, proj_data, wann_data):
     atom_list = []
     orbital_list = []
     loaded_data = {}
     disable_spin = True
+    error_info = []
     if n_clicks > 0:
-        if vasp_data and kpoints_data:
-            vasp_data = os.path.join(WORK_DIR, vasp_data)
-            kpoints_data = os.path.join(WORK_DIR, kpoints_data)
-            vasp = VaspParser(vasp_data, kpoints_data)
-            atom_list = list(set(vasp.atom_list))
-            loaded_data["vasp"] = vasp_data
-            loaded_data["kpoints"] = kpoints_data
-            disable_spin = not vasp.is_spin_polarized
-        if proj_data and vasp_data:
-            proj_data = os.path.join(WORK_DIR, proj_data)
-            proj = ProjParser(proj_data, vasp_xml=vasp_data)
-            orbital_list = proj.orbitals
-            loaded_data["proj"] = proj_data
-        # if kpoints_data:
-        #    kpoints_data = os.path.join(WORK_DIR, kpoints_data)
-        #    loaded_data["kpoints"] = kpoints_data
-        if wann_data:
-            wann_data = os.path.join(WORK_DIR, wann_data)
-            loaded_data["wann"] = wann_data
+        try:
+            if vasp_data and kpoints_data:
+                vasp_data = os.path.join(WORK_DIR, vasp_data)
+                kpoints_data = os.path.join(WORK_DIR, kpoints_data)
+                vasp = VaspParser(vasp_data, kpoints_data)
+                atom_list = list(set(vasp.atom_list))
+                loaded_data["vasp"] = vasp_data
+                loaded_data["kpoints"] = kpoints_data
+                disable_spin = not vasp.is_spin_polarized
+            if proj_data and vasp_data:
+                proj_data = os.path.join(WORK_DIR, proj_data)
+                proj = ProjParser(proj_data, vasp_xml=vasp_data)
+                orbital_list = proj.orbitals
+                loaded_data["proj"] = proj_data
+            # if kpoints_data:
+            #    kpoints_data = os.path.join(WORK_DIR, kpoints_data)
+            #    loaded_data["kpoints"] = kpoints_data
+            if wann_data:
+                wann_data = os.path.join(WORK_DIR, wann_data)
+                loaded_data["wann"] = wann_data
+        except Exception:
+            error_info = input_file_error_info
 
-    return atom_list, orbital_list, False, loaded_data, disable_spin
+    return atom_list, orbital_list, False, loaded_data, disable_spin, error_info
 
 
 @app.callback(Output("yrange", "error"), Input("yrange", "value"))
@@ -540,4 +546,4 @@ def update_figure(
 server = app.server
 
 if __name__ == "__main__":
-    app.run_server(debug=False)
+    app.run_server(debug=True)

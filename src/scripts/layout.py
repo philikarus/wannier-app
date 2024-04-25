@@ -36,6 +36,17 @@ def make_dmc_fileinput_tooltips(child):
     )
 
 
+input_file_error_info = [
+    dmc.Notification(
+        id="input-file-error",
+        title="Parse File Error",
+        message="Error encountered when parsing input files. Please use a valid file path.",
+        color="red",
+        action="show",
+        autoClose=5000,
+    ),
+]
+
 header = dbc.Navbar(
     dbc.Row(
         [
@@ -371,6 +382,10 @@ control_panel = [
 
 graph_panel = [
     dcc.Store(id="loaded-data"),
+    dmc.NotificationsProvider(
+        [html.Div(id="notify-container")],
+        position="bottom-right",
+    ),
     dmc.LoadingOverlay(
         html.Div(
             children=[
