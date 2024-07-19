@@ -98,21 +98,46 @@ class WannParser:
 
     def read_file(self) -> None:
         try:
-            band_data = pd.read_csv(
-                self.bandfile, comment="#", delim_whitespace=True, header=None
-            )
+            band_data = WannParser._read_wann_data(self.bandfile)
 
             num_bands = band_data.shape[1] - 1
             columns = [("kpath", "")]
             columns += [("bands", i) for i in range(1, num_bands + 1)]
-            columns = MultiIndex.from_tuples(columns)
-            band_data.columns = columns
+            band_data.columns = MultiIndex.from_tuples(columns)
             self._data = band_data
+
+            if self.vasp_xml:
+                self._offset_by_fermi()
         except Exception:
             raise ParseWannError
 
-        if self.vasp_xml:
-            self._offset_by_fermi()
+    @staticmethod
+    def _read_wann_data(bandfile: str):
+        bands = []
+        band = []
+        kpath = []
+        with open(bandfile) as f:
+            for line in f:
+                stripped = line.strip()
+                if len(stripped) != 0:
+                    band.append(stripped.split()[-1])
+                else:
+                    bands.append(band)
+                    band = []
+
+        with open(bandfile) as f:
+            for line in f:
+                stripped = line.strip()
+                if len(stripped) != 0:
+                    kpath.append(stripped.split()[0])
+                else:
+                    break
+
+        bands = np.array(bands, dtype=np.float64)
+        kpath = np.array(kpath, dtype=np.float64)[:, np.newaxis]
+        data = pd.DataFrame(np.hstack((kpath, bands.T)))
+
+        return data
 
     def _offset_by_fermi(self) -> None:
         with open(self.vasp_xml, "r") as f:
