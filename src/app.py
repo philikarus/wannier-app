@@ -133,6 +133,7 @@ def update_is_file_required(checklist_values):
         required[5] = True
     if "wann" in checklist_values:
         required[0] = True
+        required[1] = True
         required[3] = True
     return required
 
