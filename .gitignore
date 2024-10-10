@@ -1,8 +1,10 @@
 data/
+test/
 .ipynb_checkpoints/
 *.ipynb
 *.pyc
 *.css*
+*.bak
 .venv/
 cli/
 
