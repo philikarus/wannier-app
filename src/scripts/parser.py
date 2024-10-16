@@ -80,12 +80,21 @@ class VaspParser:
 
     @property
     def ticks(self):
-        ticks = list(set(self._data["ticks"]["distance"]))
+        ticks = self._data["ticks"]["distance"]
+        filtered_ticks = []
+        for i in range(len(ticks)):
+            if i == 0 or ticks[i] != ticks[i - 1]:
+                filtered_ticks.append(ticks[i])
+        ticks = filtered_ticks
+
         ticklabels = self._data["ticks"]["label"]
-        ticklabels = [ticklabels[0]] + list(set(ticklabels[1:-1])) + [ticklabels[-1]]
+        filtered_labels = []
+        for i in range(len(ticklabels)):
+            if i == 0 or ticklabels[i] != ticklabels[i - 1]:
+                filtered_labels.append(ticklabels[i])
         ticklabels = [
             r"$\Gamma$" if label == "GAMMA" else r"{}".format(label)
-            for label in ticklabels
+            for label in filtered_labels
         ]
         return {"ticks": ticks, "ticklabels": ticklabels}
 
