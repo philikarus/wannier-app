@@ -127,18 +127,25 @@ class WannParser:
         kpath = []
         with open(bandfile) as f:
             for line in f:
-                stripped = line.strip()
-                if len(stripped) != 0:
-                    band.append(stripped.split()[-1])
-                else:
-                    bands.append(band)
-                    band = []
+                line = line.strip()
+                if line.startswith("#"):
+                    continue
+
+                if not line:
+                    if band:
+                        bands.append(band)
+                        band = []
+                    continue
+
+                band.append(line.split()[1])
 
         with open(bandfile) as f:
             for line in f:
-                stripped = line.strip()
-                if len(stripped) != 0:
-                    kpath.append(stripped.split()[0])
+                line = line.strip()
+                if line.startswith("#"):
+                    continue
+                if line:
+                    kpath.append(line.split()[0])
                 else:
                     break
 
